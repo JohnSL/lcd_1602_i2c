@@ -1,9 +1,12 @@
-//! # lcd_1602_i2c
+//! # Platform-agnostic driver for I2C 16x2 character displays
 //!
-//! Provides a driver for common 16x2 LCD displays that use the HD44780 chip to
-//! drive the display, and an I2C chip that connects to teh HD44780.
+//! Provides a driver for common 16x2 LCD displays that use the AiP31068L chip to
+//! drive the display, and a PCA9633 chip to drive the RGB backlight.
 //!
 //! This is a basic implementation, and doesn't currently support custom characters.
+//!
+//! This has been tested with the [Waveshare LCD1602 module](https://www.waveshare.com/wiki/LCD1602_RGB_Module).
+//! It may also work with other RGB displays like the [Groove 16X2 LDC RGB](https://www.seeedstudio.com/Grove-LCD-RGB-Backlight-p-1643.html)
 
 #![no_std]
 use embedded_hal::blocking::{i2c, delay::DelayMs};
@@ -24,6 +27,8 @@ where
     i2c: I,
     show_function: u8,
     control: DisplayControl,
+    address: u8,
+    rgb_address: u8,
 }
 
 impl<I> Lcd<I>
@@ -36,7 +41,7 @@ where
     # Example
 
     ```rust
-    let lcd = Lcd::new(i2c_bus, &mut delay);
+    let lcd = Lcd::new(i2c_bus, address, rgb_address, &mut delay);
     ```
 
     `i2c` needs to implement the `embedded_hal::blocking::Write` trait.
@@ -49,7 +54,7 @@ where
     This is always a trait of type `embedded_hal::blocking::Write::Error` that
     is implemented by the I2C instance.
     */
-    pub fn new<D>(i2c: I, delay: &mut D) -> Result<Self, <I as i2c::Write>::Error>
+    pub fn new<D>(i2c: I, address: u8, rgb_address: u8, delay: &mut D) -> Result<Self, <I as i2c::Write>::Error>
     where
         D: DelayMs<u16>
     {
@@ -60,7 +65,9 @@ where
         let mut display = Lcd {
             i2c: i2c,
             show_function: LCD_4BITMODE | LCD_2LINE | LCD_5X8_DOTS,
-            control: DisplayControl::new()
+            control: DisplayControl::new(),
+            address: address,
+            rgb_address: rgb_address,
         };
         display.init(delay)?;
         Ok(display)
@@ -222,20 +229,11 @@ where
         self.set_reg(REG_BLUE, b)
     }
 
-    // Send a command to the LCD display
-    fn command(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
-        self.send_two(0x80, value)
-    }
-
-    fn send_two(&mut self, byte1: u8, byte2: u8) -> Result<(), <I as i2c::Write>::Error> {
-        let result = self.i2c.write(LCD_ADDRESS, &[byte1, byte2]);
-        result
-    }
-
     fn set_reg(&mut self, addr: u8, data: u8) -> Result<(), <I as i2c::Write>::Error> {
-        self.i2c.write(RGB_ADDRESS, &[addr, data])
+        self.i2c.write(self.rgb_address, &[addr, data])
     }
 
+    // Set one of the display's control options and then send the updated set of options to the display
     fn set_control_option(&mut self, option: ControlOptions) -> Result<(), <I as i2c::Write>::Error> {
         const LCD_DISPLAYCONTROL: u8 = 0x08;
 
@@ -244,6 +242,7 @@ where
         self.command(LCD_DISPLAYCONTROL | value)
     }
 
+    // Clear one of the display's control options and then send the updated set of options to the display
     fn clear_control_option(&mut self, option: ControlOptions) -> Result<(), <I as i2c::Write>::Error> {
         const LCD_DISPLAYCONTROL: u8 = 0x08;
 
@@ -251,8 +250,15 @@ where
         let value = self.control.value();
         self.command(LCD_DISPLAYCONTROL | value)
     }
-}
 
-// Device I2c addresses
-const LCD_ADDRESS: u8 = 0x7c >> 1;
-const RGB_ADDRESS: u8 = 0xc0 >> 1;
+    // Send a command to the LCD display
+    fn command(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
+        self.send_two(0x80, value)
+    }
+
+    // Send two bytes to the display
+    fn send_two(&mut self, byte1: u8, byte2: u8) -> Result<(), <I as i2c::Write>::Error> {
+        let result = self.i2c.write(self.address, &[byte1, byte2]);
+        result
+    }
+}
