@@ -11,6 +11,12 @@ use embedded_hal::blocking::{i2c, delay::DelayMs};
 mod display_control;
 use display_control::{DisplayControl, ControlOptions};
 
+/**
+Handles all the logic related to working with the character LCD via I2C. You'll
+need to create an instance of this with the `new()` method.
+
+The `I` generic type needs to implement the `embedded_hal::blocking::Write` trait.
+*/
 pub struct Lcd<I>
 where
     I: i2c::Write,
@@ -24,11 +30,25 @@ impl<I> Lcd<I>
 where
     I: i2c::Write
     {
-    /// Creates a new instance of the display object.
-    ///
-    /// ```rust
-    /// let lcd = Lcd::new(i2c_bus, &mut delay);
-    /// ```
+    /**
+    Creates a new instance of the display object.
+
+    # Example
+
+    ```rust
+    let lcd = Lcd::new(i2c_bus, &mut delay);
+    ```
+
+    `i2c` needs to implement the `embedded_hal::blocking::Write` trait.
+
+    `delay` needs to implement the `embedded_hal::blocking::delay::DelayMs` trait.
+
+    # Errors
+
+    The I2C library will return an error if it's not able to write to the device.
+    This is always a trait of type `embedded_hal::blocking::Write::Error` that
+    is implemented by the I2C instance.
+    */
     pub fn new<D>(i2c: I, delay: &mut D) -> Result<Self, <I as i2c::Write>::Error>
     where
         D: DelayMs<u16>
@@ -46,10 +66,8 @@ where
         Ok(display)
     }
 
-    //
     // Initialize the display for the first time after power up
-    //
-    pub fn init<D>(&mut self, delay: &mut D) -> Result<(), <I as i2c::Write>::Error>
+    fn init<D>(&mut self, delay: &mut D) -> Result<(), <I as i2c::Write>::Error>
     where D: DelayMs<u16> {
         const LCD_FUNCTIONSET: u8 = 0x20;
 
@@ -87,7 +105,14 @@ where
         self.set_reg(REG_MODE2, 0x20)
     }
 
-    // Clear the display
+    /**
+    Clear the display. The LCD display driver requires a 2ms delay after clearing, which
+    is why this method requires a `delay` object.
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn clear(&mut self, delay: &mut dyn DelayMs<u16>) -> Result<(), <I as i2c::Write>::Error> {
         const LCD_CLEARDISPLAY: u8 = 0x01;
 
@@ -96,29 +121,82 @@ where
         result
     }
 
-    // Set the position of the cursor
+    /**
+    Set the position of the cursor
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn cursor_position(&mut self, x: u8, y: u8) -> Result<(), <I as i2c::Write>::Error> {
         let col = if y == 0_u8 { x | 0x80 } else { x | 0xC0 };
         self.command(col)
     }
 
-    // Turns on the cursor, which is a non-blinking _
+    /**
+    Turns on the cursor, which is a non-blinking _
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn cursor_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         self.set_control_option(ControlOptions::CursorOn)
     }
 
+    /**
+    Turns off the cursor, which is a non-blinking _
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn cursor_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         self.clear_control_option(ControlOptions::CursorOn)
     }
 
+    /**
+    Turns on the blinking block cursor
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn blink_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         self.set_control_option(ControlOptions::BlinkOn)
     }
 
+    /**
+    Turns off the blinking block cursor
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
+    pub fn blink_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
+        self.clear_control_option(ControlOptions::BlinkOn)
+    }
+
+    /**
+    Adds a single character to the current position. The cursor will advance
+    after this call to the next column
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn send_char(&mut self, char: char) -> Result<(), <I as i2c::Write>::Error> {
         self.send_two(0x40, char as u8)
     }
 
+    /**
+    Adds a string to the current position. The cursor will advance
+    after this call to the next column
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn print(&mut self, s: &str) -> Result<(), <I as i2c::Write>::Error> {
         for c in s.chars() {
             self.send_char(c)?;
@@ -127,7 +205,13 @@ where
         Ok(())
     }
 
-    /// Set the color of the backlight for displays that have an RGB backlight.
+    /**
+    Set the color of the backlight for displays that have an RGB backlight.
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
     pub fn set_rgb(&mut self, r: u8, g: u8, b: u8) -> Result<(), <I as i2c::Write>::Error> {
         const REG_RED: u8       = 0x04;        // pwm2
         const REG_GREEN: u8     = 0x03;        // pwm1
