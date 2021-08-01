@@ -1,7 +1,17 @@
+//! # lcd_1602_i2c
+//!
+//! Provides a driver for common 16x2 LCD displays that use the HD44780 chip to
+//! drive the display, and an I2C chip that connects to teh HD44780.
+//!
+//! This is a basic implementation, and doesn't currently support custom characters.
+
 #![no_std]
 use embedded_hal::blocking::{i2c, delay::DelayMs};
 
-pub struct Display<I>
+mod display_control;
+use display_control::{DisplayControl, ControlOptions};
+
+pub struct Lcd<I>
 where
     I: i2c::Write,
 {
@@ -10,44 +20,30 @@ where
     control: DisplayControl,
 }
 
-struct DisplayControl {
-    control: u8,
-}
-
-impl DisplayControl {
-    pub fn new() -> DisplayControl {
-        DisplayControl { control: 0 }
-    }
-
-    pub fn set(&mut self, value: ControlOptions) -> &mut Self {
-        self.control |= value as u8;
-        self
-    }
-
-    pub fn clear(&mut self, value: ControlOptions) -> &mut Self {
-        self.control &= !(value as u8);
-        self
-    }
-
-    pub fn value(&mut self) -> u8 {
-        self.control
-    }
-}
-
-impl<I> Display<I>
+impl<I> Lcd<I>
 where
     I: i2c::Write
     {
-    pub fn new(i2c: I) -> Self {
+    /// Creates a new instance of the display object.
+    ///
+    /// ```rust
+    /// let lcd = Lcd::new(i2c_bus, &mut delay);
+    /// ```
+    pub fn new<D>(i2c: I, delay: &mut D) -> Result<Self, <I as i2c::Write>::Error>
+    where
+        D: DelayMs<u16>
+    {
         const LCD_4BITMODE: u8 = 0x00;
         const LCD_2LINE: u8 = 0x08;
         const LCD_5X8_DOTS: u8 = 0x00;
 
-        Display {
+        let mut display = Lcd {
             i2c: i2c,
             show_function: LCD_4BITMODE | LCD_2LINE | LCD_5X8_DOTS,
             control: DisplayControl::new()
-        }
+        };
+        display.init(delay)?;
+        Ok(display)
     }
 
     //
@@ -105,7 +101,7 @@ where
     // Set the position of the cursor
     pub fn cursor_position(&mut self, x: u8, y: u8) -> Result<(), <I as i2c::Write>::Error> {
         let col = if y == 0_u8 { x | 0x80 } else { x | 0xC0 };
-        self.send_two(0x80, col)
+        self.command(col)
     }
 
     // Turns on the cursor, which is a non-blinking _
@@ -178,11 +174,3 @@ where
 // Device I2c addresses
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
-
-// Flags for display on/off control
-#[repr(u8)]
-enum ControlOptions {
-    DisplayOn = 0x04,
-    CursorOn = 0x02,
-    BlinkOn = 0x01,
-}
