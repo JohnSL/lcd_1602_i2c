@@ -84,9 +84,7 @@ where
 
         // Set the LEDs controllable by both PWM and GRPPWM registers
         self.set_reg(REG_OUTPUT, 0xFF)?;
-        self.set_reg(REG_MODE2, 0x20)?;
-
-        self.set_rgb(255, 255, 255)
+        self.set_reg(REG_MODE2, 0x20)
     }
 
     // Clear the display
@@ -129,6 +127,17 @@ where
         Ok(())
     }
 
+    /// Set the color of the backlight for displays that have an RGB backlight.
+    pub fn set_rgb(&mut self, r: u8, g: u8, b: u8) -> Result<(), <I as i2c::Write>::Error> {
+        const REG_RED: u8       = 0x04;        // pwm2
+        const REG_GREEN: u8     = 0x03;        // pwm1
+        const REG_BLUE: u8      = 0x02;        // pwm0
+    
+        self.set_reg(REG_RED, r)?;
+        self.set_reg(REG_GREEN, g)?;
+        self.set_reg(REG_BLUE, b)
+    }
+
     // Send a command to the LCD display
     fn command(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.send_two(0x80, value)
@@ -141,17 +150,6 @@ where
 
     fn set_reg(&mut self, addr: u8, data: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.i2c.write(RGB_ADDRESS, &[addr, data])
-    }
-
-    // Set the color of the backlight
-    fn set_rgb(&mut self, r: u8, g: u8, b: u8) -> Result<(), <I as i2c::Write>::Error> {
-        const REG_RED: u8       = 0x04;        // pwm2
-        const REG_GREEN: u8     = 0x03;        // pwm1
-        const REG_BLUE: u8      = 0x02;        // pwm0
-    
-        self.set_reg(REG_RED, r)?;
-        self.set_reg(REG_GREEN, g)?;
-        self.set_reg(REG_BLUE, b)
     }
 
     fn set_control_option(&mut self, option: ControlOptions) -> Result<(), <I as i2c::Write>::Error> {
