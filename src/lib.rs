@@ -65,11 +65,11 @@ where
         const LCD_5X8_DOTS: u8 = 0x00;
 
         let mut display = Lcd {
-            i2c: i2c,
+            i2c,
             show_function: LCD_4BITMODE | LCD_2LINE | LCD_5X8_DOTS,
             control: DisplayControl::new(),
-            address: address,
-            rgb_address: rgb_address,
+            address,
+            rgb_address,
         };
         display.init(delay)?;
         Ok(display)
@@ -260,7 +260,6 @@ where
 
     // Send two bytes to the display
     fn send_two(&mut self, byte1: u8, byte2: u8) -> Result<(), <I as i2c::Write>::Error> {
-        let result = self.i2c.write(self.address, &[byte1, byte2]);
-        result
+        self.i2c.write(self.address, &[byte1, byte2])
     }
 }
