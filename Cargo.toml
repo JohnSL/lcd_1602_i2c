@@ -1,6 +1,6 @@
 [package]
 name = "lcd_1602_i2c"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 license = "MIT"
 keywords = ["no-std", "lcd", "embedded-hal-driver", "embedded-hal", "aip31068l"]
