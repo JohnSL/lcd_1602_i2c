@@ -42,13 +42,14 @@ impl DisplayControl {
             blink: Blink::Off,
         }
     }
+
     pub fn value(&self) -> u8 {
         0x08 | self.blink as u8 | self.cursor as u8 | self.display as u8
     }
 }
 
 #[cfg(test)]
-mod test2 {
+mod test {
     use super::*;
 
     #[test]
