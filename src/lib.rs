@@ -14,7 +14,9 @@ It may also work with other RGB displays like the [Groove 16X2 LDC RGB](https://
 use embedded_hal::blocking::{i2c, delay::DelayMs};
 
 mod display_control;
-use display_control::{DisplayControl, ControlOptions};
+use display_control::{DisplayControl, LcdDisplay, Blink};
+
+pub use display_control::Cursor;
 
 /**
 Handles all the logic related to working with the character LCD via I2C. You'll
@@ -91,7 +93,7 @@ where
 
         self.command(LCD_FUNCTIONSET | self.show_function)?;
 
-        self.set_control_option(ControlOptions::DisplayOn)?;
+        self.set_display_on()?;
 
         self.clear(delay)?;
 
@@ -137,31 +139,45 @@ where
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn cursor_position(&mut self, x: u8, y: u8) -> Result<(), <I as i2c::Write>::Error> {
+    pub fn set_cursor_position(&mut self, x: u8, y: u8) -> Result<(), <I as i2c::Write>::Error> {
         let col = if y == 0_u8 { x | 0x80 } else { x | 0xC0 };
         self.command(col)
     }
 
     /**
-    Turns on the cursor, which is a non-blinking _
+    Turns on the display
 
     # Errors
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn cursor_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.set_control_option(ControlOptions::CursorOn)
+    pub fn set_display_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.display = LcdDisplay::On;
+        self.update_display_control()
     }
 
     /**
-    Turns off the cursor, which is a non-blinking _
+    Turns off the display
 
     # Errors
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn cursor_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.clear_control_option(ControlOptions::CursorOn)
+    pub fn set_display_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.display = LcdDisplay::Off;
+        self.update_display_control()
+    }
+
+    /**
+    Sets the visiblity of the cursor, which is a non-blinking _
+
+    # Errors
+
+    Returns a `Result` that will report I2C errors, if any.
+    */
+    pub fn set_cursor(&mut self, cursor: Cursor) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.cursor = cursor;
+        self.update_display_control()
     }
 
     /**
@@ -171,8 +187,9 @@ where
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn blink_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.set_control_option(ControlOptions::BlinkOn)
+    pub fn set_blink_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.blink = Blink::On;
+        self.update_display_control()
     }
 
     /**
@@ -182,8 +199,9 @@ where
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn blink_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.clear_control_option(ControlOptions::BlinkOn)
+    pub fn set_blink_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.blink = Blink::Off;
+        self.update_display_control()
     }
 
     /**
@@ -194,8 +212,8 @@ where
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn send_char(&mut self, char: char) -> Result<(), <I as i2c::Write>::Error> {
-        self.send_two(0x40, char as u8)
+    pub fn write_char(&mut self, char: char) -> Result<(), <I as i2c::Write>::Error> {
+        self.write_two(0x40, char as u8)
     }
 
     /**
@@ -206,9 +224,9 @@ where
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn print(&mut self, s: &str) -> Result<(), <I as i2c::Write>::Error> {
+    pub fn write_str(&mut self, s: &str) -> Result<(), <I as i2c::Write>::Error> {
         for c in s.chars() {
-            self.send_char(c)?;
+            self.write_char(c)?;
         }
 
         Ok(())
@@ -236,30 +254,17 @@ where
     }
 
     // Set one of the display's control options and then send the updated set of options to the display
-    fn set_control_option(&mut self, option: ControlOptions) -> Result<(), <I as i2c::Write>::Error> {
-        const LCD_DISPLAYCONTROL: u8 = 0x08;
-
-        self.control.set(option);
-        let value = self.control.value();
-        self.command(LCD_DISPLAYCONTROL | value)
-    }
-
-    // Clear one of the display's control options and then send the updated set of options to the display
-    fn clear_control_option(&mut self, option: ControlOptions) -> Result<(), <I as i2c::Write>::Error> {
-        const LCD_DISPLAYCONTROL: u8 = 0x08;
-
-        self.control.clear(option);
-        let value = self.control.value();
-        self.command(LCD_DISPLAYCONTROL | value)
+    fn update_display_control(&mut self) -> Result<(), <I as i2c::Write>::Error> {
+        self.command(self.control.value())
     }
 
     // Send a command to the LCD display
     fn command(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
-        self.send_two(0x80, value)
+        self.write_two(0x80, value)
     }
 
     // Send two bytes to the display
-    fn send_two(&mut self, byte1: u8, byte2: u8) -> Result<(), <I as i2c::Write>::Error> {
+    fn write_two(&mut self, byte1: u8, byte2: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.i2c.write(self.address, &[byte1, byte2])
     }
 }

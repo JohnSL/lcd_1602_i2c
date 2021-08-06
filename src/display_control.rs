@@ -1,70 +1,76 @@
-// Flags for display on/off control
-#[repr(u8)]
-pub enum ControlOptions {
-    DisplayOn = 0x04,
-    CursorOn = 0x02,
-    BlinkOn = 0x01,
+#[derive(Copy, Clone)]
+pub enum Cursor {
+    On = 2,
+    Off = 0,
 }
 
-/// Used to keep track of the current "control" state of the LCD. This allows us to
-/// set and clear individual options (flags).
+#[derive(Copy, Clone)]
+pub enum LcdDisplay {
+    On = 4,
+    Off = 0,
+}
+
+#[derive(Copy, Clone)]
+pub enum Blink {
+    On = 1,
+    Off = 0,
+}
+
 pub struct DisplayControl {
-    control: u8,
+    pub cursor: Cursor,
+    pub display: LcdDisplay,
+    pub blink: Blink,
 }
 
 impl DisplayControl {
-    pub fn new() -> DisplayControl {
-        DisplayControl { control: 0 }
+    pub fn new() -> Self {
+        DisplayControl {
+            cursor: Cursor::Off,
+            display: LcdDisplay::Off,
+            blink: Blink::Off,
+        }
     }
-
-    /// Set a control flag in this struct
-    pub fn set(&mut self, value: ControlOptions) -> &mut Self {
-        self.control |= value as u8;
-        self
-    }
-
-    /// Clear a control flag in this struct
-    pub fn clear(&mut self, value: ControlOptions) -> &mut Self {
-        self.control &= !(value as u8);
-        self
-    }
-
-    /// Get the current value of the control flag
     pub fn value(&self) -> u8 {
-        self.control
+        0x08 | self.blink as u8 | self.cursor as u8 | self.display as u8
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod test2 {
     use super::*;
 
     #[test]
-    fn initial_value_zero() {
+    fn all_flags_off() {
         let control = DisplayControl::new();
-        assert_eq!(0, control.value());
+        assert_eq!(0x08, control.value());
     }
 
     #[test]
-    fn display_on_sets_value() {
+    fn cursur_on() {
         let mut control = DisplayControl::new();
-        control.set(ControlOptions::CursorOn);
-        assert_eq!(ControlOptions::CursorOn as u8, control.value());
+        control.cursor = Cursor::On;
+        assert_eq!(0x08 | 2, control.value());
     }
 
     #[test]
-    fn two_options_on() {
+    fn blink_on() {
         let mut control = DisplayControl::new();
-        control.set(ControlOptions::CursorOn).set(ControlOptions::DisplayOn);
-        assert_eq!(ControlOptions::CursorOn as u8 | ControlOptions::DisplayOn as u8, control.value());
+        control.blink = Blink::On;
+        assert_eq!(0x08 | 1, control.value());
     }
 
     #[test]
-    fn two_options_on_then_clear_one() {
+    fn display_on() {
         let mut control = DisplayControl::new();
-        control.set(ControlOptions::CursorOn).set(ControlOptions::DisplayOn);
+        control.display = LcdDisplay::On;
+        assert_eq!(0x08 | 4, control.value());
+    }
 
-        control.clear(ControlOptions::CursorOn);
-        assert_eq!(ControlOptions::DisplayOn as u8, control.value());
+    #[test]
+    fn display_and_cursor_on() {
+        let mut control = DisplayControl::new();
+        control.display = LcdDisplay::On;
+        control.cursor = Cursor::On;
+        assert_eq!(0x08 | 4 | 2, control.value());
     }
 }

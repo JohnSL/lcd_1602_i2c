@@ -1,0 +1,10 @@
+{
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+          "*.mutable": {
+            "fontStyle": "", // underline is the default
+          },
+        }
+      },
+    }
