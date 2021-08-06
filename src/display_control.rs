@@ -1,18 +1,30 @@
+#![deny(missing_docs)]
+
+/// Controls the visibilty of the non-blinking cursor, which is basically an _ **after** the cursor position.
+/// The cursor position represents where the next character will show up.
 #[derive(Copy, Clone)]
 pub enum Cursor {
+    /// Display the non-blinking cursor
     On = 2,
+    /// Hide the non-blinking cursor
     Off = 0,
 }
 
+/// Determines whether the entire LCD is on or off.
 #[derive(Copy, Clone)]
 pub enum LcdDisplay {
+    /// Turn the LCD display on
     On = 4,
+    /// Turn the LCD display off
     Off = 0,
 }
 
+/// Controls the visibility of the blinking block cursor.
 #[derive(Copy, Clone)]
 pub enum Blink {
+    /// Turn the blinking block cursor on
     On = 1,
+    /// Turn the blinking block cursor off
     Off = 0,
 }
 

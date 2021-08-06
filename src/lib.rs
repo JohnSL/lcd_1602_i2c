@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 /*!
 # Platform-agnostic driver for I2C 16x2 character displays
 
