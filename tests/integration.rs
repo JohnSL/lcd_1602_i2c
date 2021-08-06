@@ -1,7 +1,7 @@
 use embedded_hal_mock::common::Generic;
 use embedded_hal_mock::delay::MockNoop;
 use embedded_hal_mock::i2c::{Mock as I2cMock, Transaction as I2cTransaction};
-use lcd_1602_i2c::{Lcd, Cursor};
+use lcd_1602_i2c::{Lcd, Cursor, LcdDisplay, Blink};
 use std::vec;
 
 const BLINK_ON: u8 = 0x01;
@@ -28,7 +28,7 @@ fn display_off() {
     let mut lcd = new_lcd(&expectations, EXPECTED_ADDRESS, RGB_ADDRESS);
 
     // Act
-    let _ = lcd.set_display_off();
+    let _ = lcd.set_display(LcdDisplay::Off);
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn cursor_off() {
         .command_bytes(EXPECTED_ADDRESS, DISPLAY_CONTROL | DISPLAY_ON);
 
     let mut lcd = new_lcd(&expectations, EXPECTED_ADDRESS, RGB_ADDRESS);
-    let _ = lcd.set_cursor_on();
+    let _ = lcd.set_cursor(Cursor::On);
 
     // Act
     let _ = lcd.set_cursor(Cursor::Off);
@@ -69,7 +69,7 @@ fn blink_on() {
     let mut lcd = new_lcd(&expectations, EXPECTED_ADDRESS, RGB_ADDRESS);
 
     // Act
-    let _ = lcd.set_blink_on();
+    let _ = lcd.set_blink(Blink::On);
 }
 
 #[test]
@@ -81,10 +81,10 @@ fn blink_off() {
         .command_bytes(EXPECTED_ADDRESS, DISPLAY_CONTROL | DISPLAY_ON);
 
     let mut lcd = new_lcd(&expectations, EXPECTED_ADDRESS, RGB_ADDRESS);
-    let _ = lcd.set_blink_on();
+    let _ = lcd.set_blink(Blink::On);
 
     // Act
-    let _ = lcd.set_blink_off();
+    let _ = lcd.set_blink(Blink::Off);
 }
 
 fn new_lcd<'a>(

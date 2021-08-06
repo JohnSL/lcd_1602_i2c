@@ -14,9 +14,9 @@ It may also work with other RGB displays like the [Groove 16X2 LDC RGB](https://
 use embedded_hal::blocking::{i2c, delay::DelayMs};
 
 mod display_control;
-use display_control::{DisplayControl, LcdDisplay, Blink};
+use display_control::{DisplayControl};
 
-pub use display_control::Cursor;
+pub use display_control::{Cursor, LcdDisplay, Blink};
 
 /**
 Handles all the logic related to working with the character LCD via I2C. You'll
@@ -93,7 +93,7 @@ where
 
         self.command(LCD_FUNCTIONSET | self.show_function)?;
 
-        self.set_display_on()?;
+        self.set_display(LcdDisplay::On)?;
 
         self.clear(delay)?;
 
@@ -145,26 +145,14 @@ where
     }
 
     /**
-    Turns on the display
+    Control whether the display is on or off
 
     # Errors
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_display_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.control.display = LcdDisplay::On;
-        self.update_display_control()
-    }
-
-    /**
-    Turns off the display
-
-    # Errors
-
-    Returns a `Result` that will report I2C errors, if any.
-    */
-    pub fn set_display_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.control.display = LcdDisplay::Off;
+    pub fn set_display(&mut self, display: LcdDisplay) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.display = display;
         self.update_display_control()
     }
 
@@ -187,20 +175,8 @@ where
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_blink_on(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.control.blink = Blink::On;
-        self.update_display_control()
-    }
-
-    /**
-    Turns off the blinking block cursor
-
-    # Errors
-
-    Returns a `Result` that will report I2C errors, if any.
-    */
-    pub fn set_blink_off(&mut self) -> Result<(), <I as i2c::Write>::Error> {
-        self.control.blink = Blink::Off;
+    pub fn set_blink(&mut self, blink: Blink) -> Result<(), <I as i2c::Write>::Error> {
+        self.control.blink = blink;
         self.update_display_control()
     }
 
