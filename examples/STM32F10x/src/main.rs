@@ -13,7 +13,7 @@ use hal::{
 };
 use stm32f1xx_hal as hal; // STM32F1 specific functions
 
-use lcd_1602_i2c::Lcd;
+use lcd_1602_i2c::{Lcd, Cursor};
 
 #[allow(unused_imports)]
 use panic_halt; // When a panic occurs, stop the microcontroller
@@ -53,7 +53,8 @@ fn main() -> ! {
 
     let mut lcd = Lcd::new(i2c_bus, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
     lcd.set_rgb(255, 255, 255).unwrap();
-    lcd.print("Hello world!").unwrap();
+    lcd.set_cursor(Cursor::On).unwrap();
+    lcd.write_str("Hello world!").unwrap();
 
     loop {
     }
