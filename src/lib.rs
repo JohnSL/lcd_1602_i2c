@@ -8,8 +8,13 @@ drive the display, and a PCA9633 chip to drive the RGB backlight.
 
 This is a basic implementation, and doesn't currently support custom characters.
 
-This has been tested with the [Waveshare LCD1602 module](https://www.waveshare.com/wiki/LCD1602_RGB_Module).
-It may also work with other RGB displays like the [Groove 16X2 LDC RGB](https://www.seeedstudio.com/Grove-LCD-RGB-Backlight-p-1643.html)
+This has been tested with the [Waveshare LCD1602
+I2C](https://www.waveshare.com/wiki/LCD1602_I2C_Module) and
+[LCD1602 RGB](https://www.waveshare.com/wiki/LCD1602_RGB_Module)
+modules.
+
+It may also work with other RGB displays like the [Groove 16X2 LDC
+RGB](https://www.seeedstudio.com/Grove-LCD-RGB-Backlight-p-1643.html)
 */
 
 #![no_std]
@@ -21,10 +26,13 @@ use display_control::{DisplayControl};
 pub use display_control::{Cursor, LcdDisplay, Blink};
 
 /**
-Handles all the logic related to working with the character LCD via I2C. You'll
-need to create an instance of this with the `new()` method.
+Handles all the logic related to working with the character LCD via
+I2C. You'll need to create an instance of this with the `new()`
+method.  If the `rgb_address` is not specified, then RGB related
+functions won't do anything.
 
-The `I` generic type needs to implement the `embedded_hal::blocking::Write` trait.
+The `I` generic type needs to implement the
+`embedded_hal::blocking::Write` trait.
 */
 pub struct Lcd<I>
 where
@@ -33,20 +41,20 @@ where
     i2c: I,
     control: DisplayControl,
     address: u8,
-    rgb_address: u8,
+    rgb_address: Option<u8>,
 }
 
 impl<I> Lcd<I>
 where
-    I: i2c::Write
-    {
+    I: i2c::Write,
+{
     /**
     Creates a new instance of the display object.
 
     # Example
 
     ```rust
-    let lcd = Lcd::new(i2c_bus, address, rgb_address, &mut delay);
+    let lcd = Lcd::new(i2c_bus, address, Some(rgb_address), &mut delay);
     ```
 
     `i2c` needs to implement the `embedded_hal::blocking::Write` trait.
@@ -59,9 +67,14 @@ where
     This is always a trait of type `embedded_hal::blocking::Write::Error` that
     is implemented by the I2C instance.
     */
-    pub fn new<D>(i2c: I, address: u8, rgb_address: u8, delay: &mut D) -> Result<Self, <I as i2c::Write>::Error>
+    pub fn new<D>(
+        i2c: I,
+        address: u8,
+        rgb_address: Option<u8>,
+        delay: &mut D,
+    ) -> Result<Self, <I as i2c::Write>::Error>
     where
-        D: DelayMs<u16>
+        D: DelayMs<u16>,
     {
         let mut display = Lcd {
             i2c,
@@ -75,7 +88,9 @@ where
 
     // Initialize the display for the first time after power up
     fn init<D>(&mut self, delay: &mut D) -> Result<(), <I as i2c::Write>::Error>
-    where D: DelayMs<u16> {
+    where
+        D: DelayMs<u16>,
+    {
         delay.delay_ms(80); // Need to wait at least 40ms before sending commands
 
         // Send the initial command sequence according to the HD44780 datasheet
@@ -220,7 +235,10 @@ where
     }
 
     fn write_reg(&mut self, addr: u8, data: u8) -> Result<(), <I as i2c::Write>::Error> {
-        self.i2c.write(self.rgb_address, &[addr, data])
+        if let Some(rgb_address) = self.rgb_address {
+            self.i2c.write(rgb_address, &[addr, data])?;
+        }
+        Ok(())
     }
 
     fn write_function_set(&mut self) -> Result<(), <I as i2c::Write>::Error> {
